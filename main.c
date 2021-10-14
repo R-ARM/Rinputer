@@ -32,7 +32,7 @@ int main(void)
 
 	ioctl(outfd, UI_SET_EVBIT, EV_KEY);
 
-	ioctl(outfd, UI_SET_KEYBIT, BTN_DPAD_UP);		// dpad up
+	ioctl(outfd, UI_SET_KEYBIT, BTN_DPAD_UP);	// dpad up
 	ioctl(outfd, UI_SET_KEYBIT, BTN_DPAD_DOWN);	// dpad down
 	ioctl(outfd, UI_SET_KEYBIT, BTN_DPAD_LEFT);	// dpad left
 	ioctl(outfd, UI_SET_KEYBIT, BTN_DPAD_RIGHT);	// dpad right
@@ -48,11 +48,14 @@ int main(void)
 	ioctl(outfd, UI_SET_KEYBIT, BTN_TR2);		// L2
 	ioctl(outfd, UI_SET_KEYBIT, BTN_TL2);		// R2
 
+	ioctl(outfd, UI_SET_KEYBIT, BTN_SELECT);
+	ioctl(outfd, UI_SET_KEYBIT, BTN_START);
+
 	memset(&usetup, 0, sizeof(usetup));
 	usetup.id.bustype = BUS_USB;
 	usetup.id.vendor = 0x1234;
 	usetup.id.product = 0x5678;
-	strcpy(usetup.name, "Ragnarok Input");
+	strcpy(usetup.name, "Rinputer");
 
 	ioctl(outfd, UI_DEV_SETUP, &usetup);
 	ioctl(outfd, UI_DEV_CREATE);
