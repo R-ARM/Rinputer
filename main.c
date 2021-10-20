@@ -5,7 +5,8 @@
 #include <unistd.h>
 #include <string.h>
 
-#define INPATH "/dev/input/by-path/platform-ff180000.i2c-event"
+#define JSPATH "" // TODO
+#define KEYPATH "/dev/input/by-path/platform-gpio-keys-event-joystick"
 
 // yoinked directly from kernel documentation
 void emit(int fd, int type, int code, int val)
@@ -25,7 +26,8 @@ void emit(int fd, int type, int code, int val)
 
 int main(void)
 {
-	int infd = open(INPATH, O_RDONLY);
+	int keyfd = open(KEYPATH, O_RDONLY);
+	//int jsfd = open(JSPATH, O_RDONLY);
 	int outfd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 
 	struct uinput_setup usetup;
@@ -60,12 +62,16 @@ int main(void)
 	ioctl(outfd, UI_DEV_SETUP, &usetup);
 	ioctl(outfd, UI_DEV_CREATE);
 
+	// make sure nothing can read our inputs
+	ioctl(keyfd, EVIOCGRAB, 1);
+	//ioctl(jsfd, EVIOCGRAB, 1);
+
 	int rd, i;
 	struct input_event ev[4];
 
 	while (1)
 	{
-		rd = read(infd, ev, sizeof(struct input_event) * 4);
+		rd = read(keyfd, ev, sizeof(struct input_event) * 4);
 		if (rd > 0)
 		{
 			for (i = 0; i < rd / sizeof(struct input_event) * 4; i++)
