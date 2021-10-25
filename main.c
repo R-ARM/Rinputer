@@ -7,12 +7,16 @@
 
 #define ANALPATH "/dev/input/by-path/platform-analog-event-joystick"
 #define KEYPATH "/dev/input/by-path/platform-gpio-keys-event-joystick"
+#define PWRPATH "/dev/input/by-path/platform-ff180000.i2c-platform-rk805-pwrkey-event"
 
 int outfd;
 int keyfd;
 int analfd;
+int pwrfd;
+int jackfd;
 
 pthread_t handleAnal;
+pthread_t handlePwr;
 
 // yoinked directly from kernel documentation
 void emit(int fd, int type, int code, int val)
@@ -47,6 +51,62 @@ static void setup_abs(int fd, int fd2, int unsigned chan)
 		perror("UI_ABS_SETUP");
 }
 
+
+//unsigned int doneWaiting = 1;
+
+//void *waitTwoSeconds(void *unused)
+//{
+//	doneWaiting = 0;
+//	sleep(2);
+//	doneWaiting = 1;
+//}
+
+//void do_poweroff()
+//{
+//	printf("POWEROFF\n");
+//}
+
+void do_suspend()
+{
+	printf("SUSPEND\n");
+}
+
+void *pwrHandler(void *unused)
+{
+	int rd, i;
+	struct input_event ev[4];
+//	pthread_t waiter;
+	while(1)
+	{
+		rd = read(pwrfd, ev, sizeof(struct input_event) * 4);
+		if (rd > 0)
+		{
+			for (i = 0; i < rd / sizeof(struct input_event) * 4; i++)
+			{
+				if (ev[i].type == EV_KEY && ev[i].code == KEY_POWER)
+				{
+					if (ev[i].value == 0)
+					{
+						close(pwrfd);
+//						if (doneWaiting == 1)
+//							do_poweroff();
+//						else
+							do_suspend();
+						pwrfd = open(PWRPATH, O_RDONLY);
+					}
+//					else if (ev[i].value == 1)
+//					{
+//						if (doneWaiting == 1)
+//						{
+//							pthread_create(&waiter, NULL, waitTwoSeconds, NULL);
+//						}
+//					}
+				}
+			}
+		}
+	}
+}
+
 void *analHandler(void *unused)
 {
 
@@ -71,6 +131,7 @@ int main(void)
 	outfd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 	keyfd = open(KEYPATH, O_RDONLY);
 	analfd = open(ANALPATH, O_RDONLY);
+	pwrfd = open(PWRPATH, O_RDONLY);
 
 	struct uinput_setup usetup;
 
@@ -112,8 +173,10 @@ int main(void)
 	
 	ioctl(keyfd, EVIOCGRAB, 1);
 	ioctl(analfd, EVIOCGRAB, 1);
+	ioctl(pwrfd, EVIOCGRAB, 1);
 
 	pthread_create(&handleAnal, NULL, analHandler, NULL);
+	pthread_create(&handlePwr, NULL, pwrHandler, NULL);
 
 	int rd, i;
 	struct input_event ev[4];
