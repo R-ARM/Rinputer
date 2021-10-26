@@ -111,7 +111,10 @@ static void setup_abs(int fd, int fd2, int unsigned chan)
 
 void do_suspend()
 {
-	printf("SUSPEND\n");
+	FILE *state;
+	state = fopen("/sys/power/state", "w");
+	fprintf(state, "mem");
+	fclose(state);
 }
 
 void *pwrHandler(void *unused)
@@ -205,7 +208,7 @@ void *jackHandler(void *unused)
 	int rd;
 	int i = 0;
 	struct input_event ev[4];
-
+	
 	// if user boots up with headphones inserted
 	ioctl(jackfd, EVIOCGSW(sizeof(i)), &i);
 	if(i & (1<<SW_HEADPHONE_INSERT) > 0)
