@@ -54,9 +54,9 @@ void signalHandler(int sig)
 {
 	if (sig == SIGINT)
 	{
-		//FILE *settingsFile = fopen("/etc/rinputer.dat", "w");
-		//fwrite(&settings, sizeof(struct stateful), 1, settingsFile);
-		//fclose(settingsFile);
+		FILE *settingsFile = fopen("/etc/rinputer.dat", "w");
+		fwrite(&settings, sizeof(struct stateful), 1, settingsFile);
+		fclose(settingsFile);
 		exit(0);
 	}
 }
@@ -202,9 +202,17 @@ void enableSpeakers()
 
 void *jackHandler(void *unused)
 {
-	int rd, i;
+	int rd;
+	int i = 0;
 	struct input_event ev[4];
-	// TODO: read value NOW
+
+	// if user boots up with headphones inserted
+	ioctl(jackfd, EVIOCGSW(sizeof(i)), &i);
+	if(i & (1<<SW_HEADPHONE_INSERT) > 0)
+		enableHeadphones();
+	else
+		enableSpeakers();
+
 	while(1)
 	{
 		rd = read(jackfd, ev, sizeof(struct input_event) * 4);
@@ -313,7 +321,9 @@ int main(void)
 	{
 		fread(&settings, sizeof(struct stateful), 1, settingsFile);
 		fclose(settingsFile);
+		updateBrightness();
 	}
+
 
 	pthread_create(&handleJack, NULL, jackHandler, NULL);
 	pthread_create(&handleAnal, NULL, analHandler, NULL);
