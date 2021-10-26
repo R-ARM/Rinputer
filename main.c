@@ -180,7 +180,8 @@ void setSound(int volume, char* mux, int changeMux)
 	}
 
 	char volbuffer[64];
-	sprintf(volbuffer, "/usr/bin/amixer sset Master %d\%", volume);
+	sprintf(volbuffer, "/usr/bin/amixer sset Master %d%%", volume);
+	printf("%s\n", volbuffer);
 	system(volbuffer);
 
 }
