@@ -1,0 +1,10 @@
+#!/bin/sh
+
+if [ $1 = start ]; then
+	rinputer &
+	echo $! > /tmp/rinputer_pid
+fi
+
+if [ $1 = stop ]; then
+	kill -2 $(cat /tmp/rinputer_pid)
+fi
