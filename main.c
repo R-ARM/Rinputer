@@ -42,12 +42,15 @@ struct keys
 {
 	int volume_up;
 	int volume_down;
-
+	int run_rpause;
+	int menu;
 };
 
 struct keys keybinds = {
 	.volume_up = BTN_TRIGGER_HAPPY1,
 	.volume_down = BTN_TRIGGER_HAPPY2,
+	.run_rpause = BTN_TRIGGER_HAPPY5,
+	.menu = BTN_TRIGGER_HAPPY4
 };
 
 void signalHandler(int sig)
@@ -258,6 +261,39 @@ void *analHandler(void *unused)
 	}
 }
 
+pthread_t rp_thread;
+int rpausepid = 0;
+void *_rpause_waiter(void *unused)
+{
+	int status;
+	waitpid(rpausepid, &status, 0);
+	rpausepid = 0; // should not be running now
+}
+
+void run_rpause()
+{
+	if(rpausepid != 0)
+		return; // rpause inside rpause? nice try
+
+	FILE *pid = fopen("/tmp/curpid", "r");
+	if(pid == NULL)
+		return; // probably nothing ran... stupid user
+	fclose(pid);
+
+	rpausepid = fork();
+	if(rpausepid > 0)
+	{
+		pthread_create(&rp_thread, NULL, _rpause_waiter, NULL);
+		return; // and now the waiter takes over
+	}
+	else
+	{
+		char *args[] = { NULL };
+		char *env[] = { "XDG_RUNTIME_DIR=/temp", "WAYLAND_DISPLAY=wayland-1", NULL };
+		execve("/bin/rpause", args, env);
+	}
+}
+
 #define min(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define max(X, Y) (((X) > (Y)) ? (X) : (Y))
 
@@ -291,6 +327,8 @@ int main(void)
 
 	ioctl(outfd, UI_SET_KEYBIT, BTN_SELECT);
 	ioctl(outfd, UI_SET_KEYBIT, BTN_START);
+
+	ioctl(outfd, UI_SET_KEYBIT, BTN_MODE);		// menu
 
 	ioctl(outfd, UI_SET_EVBIT, EV_ABS);
 	setup_abs(outfd, analfd, ABS_X);
@@ -400,6 +438,10 @@ int main(void)
 					vd_held = 0;
 				else if (ev[i].type == EV_KEY && ev[i].code == keybinds.volume_up && ev[i].value == 0)
 					vu_held = 0;
+				else if (ev[i].type == EV_KEY && ev[i].code == keybinds.run_rpause && ev[i].value == 1)
+					run_rpause();
+				else if (ev[i].type == EV_KEY && ev[i].code == keybinds.menu)
+					emit(outfd, ev[i].type, BTN_MODE, ev[i].value);
 				else
 					emit(outfd, ev[i].type, ev[i].code, ev[i].value);
 			}
