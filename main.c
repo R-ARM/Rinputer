@@ -45,14 +45,29 @@ struct keys
 	int volume_down;
 	int run_rpause;
 	int menu;
+	int start;
+	int select;
 };
 
-struct keys keybinds = {
+struct keys odroid_go3_keybinds = {
 	.volume_up = BTN_TRIGGER_HAPPY1,
 	.volume_down = BTN_TRIGGER_HAPPY2,
 	.run_rpause = BTN_TRIGGER_HAPPY5,
-	.menu = BTN_TRIGGER_HAPPY4
+	.menu = BTN_TRIGGER_HAPPY4,
+	.start = BTN_START,
+	.select = BTN_SELECT
 };
+
+struct keys odroid_go2_keybinds = {
+	.volume_up = BTN_TRIGGER_HAPPY6,
+	.volume_down = BTN_TRIGGER_HAPPY5,
+	.run_rpause = BTN_TRIGGER_HAPPY2,
+	.menu = BTN_TRIGGER_HAPPY1,
+	.start = BTN_TRIGGER_HAPPY3,
+	.select = BTN_TRIGGER_HAPPY4
+};
+
+struct keys *keybinds;
 
 void signalHandler(int sig)
 {
@@ -303,8 +318,33 @@ void run_rpause()
 #define min(X, Y) (((X) < (Y)) ? (X) : (Y))
 #define max(X, Y) (((X) > (Y)) ? (X) : (Y))
 
+struct keys *find_keybinds()
+{
+	char compatible[512];
+	char *go2_compatible		= "hardkernel,rk3326-odroid-go2";
+	char *go3_compatible		= "hardkernel,rk3326-odroid-go3";
+
+	FILE *fd = fopen("/proc/device-tree/compatible", "r");
+	fscanf(fd, "%s", compatible);
+	fclose(fd);
+
+	if(strncmp(compatible, go2_compatible, 28) == 0)
+	{
+		printf("Loading Odroid Go Advance key config\n");
+		return &odroid_go2_keybinds;
+	}
+	if(strncmp(compatible, go3_compatible, 28) == 0)
+	{
+		printf("Loading Odroid Go Super key config\n");
+		return &odroid_go3_keybinds;
+	}
+	printf("Failed finding device keybinds from compatible \"%s\"\n", compatible);
+	return NULL;
+}
+
 int main(void)
 {
+	keybinds = find_keybinds();
 	outfd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 	keyfd = open(KEYPATH, O_RDONLY);
 	analfd = open(ANALPATH, O_RDONLY);
@@ -390,7 +430,7 @@ int main(void)
 		{
 			for (i = 0; i < rd / sizeof(struct input_event) * 4; i++)
 			{
-				if (ev[i].type == EV_KEY && ev[i].code == keybinds.volume_down && ev[i].value == 1)
+				if (ev[i].type == EV_KEY && ev[i].code == keybinds->volume_down && ev[i].value == 1)
 				{
 					if (vu_held == 0)
 					{
@@ -416,7 +456,7 @@ int main(void)
 					}
 					vd_held = 1;
 				}
-				else if (ev[i].type == EV_KEY && ev[i].code == keybinds.volume_up && ev[i].value == 1)
+				else if (ev[i].type == EV_KEY && ev[i].code == keybinds->volume_up && ev[i].value == 1)
 				{
 					if (vd_held == 0)
 					{
@@ -442,14 +482,18 @@ int main(void)
 
 					vu_held = 1;
 				}
-				else if (ev[i].type == EV_KEY && ev[i].code == keybinds.volume_down && ev[i].value == 0)
+				else if (ev[i].type == EV_KEY && ev[i].code == keybinds->volume_down && ev[i].value == 0)
 					vd_held = 0;
-				else if (ev[i].type == EV_KEY && ev[i].code == keybinds.volume_up && ev[i].value == 0)
+				else if (ev[i].type == EV_KEY && ev[i].code == keybinds->volume_up && ev[i].value == 0)
 					vu_held = 0;
-				else if (ev[i].type == EV_KEY && ev[i].code == keybinds.run_rpause && ev[i].value == 1)
+				else if (ev[i].type == EV_KEY && ev[i].code == keybinds->run_rpause && ev[i].value == 1)
 					run_rpause();
-				else if (ev[i].type == EV_KEY && ev[i].code == keybinds.menu)
+				else if (ev[i].type == EV_KEY && ev[i].code == keybinds->menu)
 					emit(outfd, ev[i].type, BTN_MODE, ev[i].value);
+				else if (ev[i].type == EV_KEY && ev[i].code == keybinds->start)
+					emit(outfd, ev[i].type, BTN_START, ev[i].value);
+				else if (ev[i].type == EV_KEY && ev[i].code == keybinds->select)
+					emit(outfd, ev[i].type, BTN_SELECT, ev[i].value);
 				else
 					emit(outfd, ev[i].type, ev[i].code, ev[i].value);
 			}
