@@ -10,6 +10,7 @@
 #include <pthread.h>
 
 #define ANALPATH "/dev/input/by-path/platform-analog-event-joystick"
+#define ANALPATH_ALT "/dev/input/by-path/platform-analog-event"
 #define KEYPATH "/dev/input/by-path/platform-gpio-keys-event-joystick"
 #define PWRPATH "/dev/input/by-path/platform-ff180000.i2c-platform-rk805-pwrkey-event"
 #define JACKPATH "/dev/input/by-path/platform-rk817-sound-event"
@@ -91,7 +92,12 @@ static void setup_abs(int fd, int fd2, int unsigned chan)
 		.absinfo = { .minimum = 0,  .maximum = 0 },
 	};
 	
-	ioctl(fd2, EVIOCGABS(chan), &s.absinfo);
+	if (ioctl(fd2, EVIOCGABS(chan), &s.absinfo) < 0)
+	{
+		//dummy values, dont matter anyway
+		s.absinfo.minimum = -256;
+		s.absinfo.maximum = 256;
+	}
 
 	if (ioctl(fd, UI_ABS_SETUP, &s))
 		perror("UI_ABS_SETUP");
@@ -302,6 +308,8 @@ int main(void)
 	outfd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
 	keyfd = open(KEYPATH, O_RDONLY);
 	analfd = open(ANALPATH, O_RDONLY);
+	if (analfd < 0)
+		analfd = open(ANALPATH_ALT, O_RDONLY);
 	pwrfd = open(PWRPATH, O_RDONLY);
 	jackfd = open(JACKPATH, O_RDONLY);
 
@@ -331,6 +339,7 @@ int main(void)
 	ioctl(outfd, UI_SET_KEYBIT, BTN_MODE);		// menu
 
 	ioctl(outfd, UI_SET_EVBIT, EV_ABS);
+	
 	setup_abs(outfd, analfd, ABS_X);
 	setup_abs(outfd, analfd, ABS_Y);
 	setup_abs(outfd, analfd, ABS_RX);
@@ -346,7 +355,6 @@ int main(void)
 	ioctl(outfd, UI_DEV_CREATE);
 	
 	ioctl(keyfd, EVIOCGRAB, 1);
-	ioctl(analfd, EVIOCGRAB, 1);
 	ioctl(pwrfd, EVIOCGRAB, 1);
 	ioctl(jackfd, EVIOCGRAB, 1);
 
