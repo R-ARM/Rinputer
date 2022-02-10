@@ -235,7 +235,7 @@ void *jackHandler(void *unused)
 	
 	// if user boots up with headphones inserted
 	ioctl(jackfd, EVIOCGSW(sizeof(i)), &i);
-	if(i & (1<<SW_HEADPHONE_INSERT) > 0)
+	if(i > 0)
 		enableHeadphones();
 	else
 		enableSpeakers();
