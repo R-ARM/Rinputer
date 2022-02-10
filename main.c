@@ -474,7 +474,7 @@ int main(void)
 						}
 						else
 						{
-							settings.hpVolume -= 5;
+							settings.hpVolume += 5;
 							settings.hpVolume = min(settings.hpVolume, 100);
 							setSound(settings.hpVolume, "", 0);
 						}
